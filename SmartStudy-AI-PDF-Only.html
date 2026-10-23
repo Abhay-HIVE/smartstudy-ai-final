@@ -1,0 +1,628 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SmartStudy AI</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    :root {
+      --primary: #6366f1;
+      --secondary: #ec4899;
+      --accent: #22c55e;
+      --bg: #080d20;
+      --card: rgba(15, 23, 42, .9);
+      --border: rgba(255, 255, 255, .12);
+      --text: #e5e7eb;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: Outfit, sans-serif; }
+    body { min-height: 100vh; background: radial-gradient(circle at top left, #25205d, var(--bg) 60%); color: var(--text); }
+    button, input, select { font: inherit; }
+    #welcomeScreen { position: fixed; inset: 0; background: linear-gradient(135deg, #4f46e5, #ec4899); display: flex; align-items: center; justify-content: center; z-index: 2000; padding: 20px; }
+    .welcome-box { background: white; color: #111827; padding: 32px; border-radius: 22px; width: 100%; max-width: 400px; text-align: center; }
+    .welcome-box input, .welcome-box button { width: 100%; padding: 13px; margin-top: 16px; border-radius: 12px; }
+    .welcome-box input { border: 1px solid #ccc; color: #111; background: white; }
+    .welcome-box button { border: 0; color: white; background: var(--primary); font-weight: 700; cursor: pointer; }
+    header { position: sticky; top: 0; z-index: 10; backdrop-filter: blur(14px); background: #312e8177; border-bottom: 1px solid var(--border); }
+    .header-wrap { max-width: 1100px; margin: auto; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+    header h1 { font-size: 1.5rem; } header span { color: #86efac; }
+    .container { max-width: 1100px; margin: auto; padding: 24px; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 22px; padding: 26px; margin-bottom: 24px; }
+    .card h2 { margin-bottom: 10px; }
+    .subtext { color: #cbd5e1; margin-bottom: 20px; font-size: .92rem; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px; }
+    label { display: block; font-size: .88rem; color: #cbd5e1; }
+    input, select { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 12px; background: #0b1225; color: white; margin-top: 7px; }
+    .date-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px; margin-top: 18px; }
+    .btn { width: 100%; margin-top: 18px; padding: 14px; border: 0; border-radius: 14px; color: white; font-weight: 700; cursor: pointer; background: linear-gradient(135deg, var(--primary), var(--secondary)); }
+    .btn.secondary { background: linear-gradient(135deg, #16a34a, var(--accent)); }
+    .btn.tertiary { background: #334155; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: separate; border-spacing: 0 8px; min-width: 300px; }
+    th { text-align: left; padding: 10px; color: #c7d2fe; }
+    td { padding: 14px; background: #ffffff0b; }
+    td:first-child { border-left: 4px solid var(--primary); border-radius: 10px 0 0 10px; white-space: nowrap; }
+    td:last-child { border-radius: 0 10px 10px 0; }
+    tr.break td { color: #bbf7d0; font-style: italic; }
+    tr.break td:first-child { border-left-color: var(--accent); }
+    tr.weak td:first-child { border-left-color: #f87171; }
+    #adviceBox ul { padding-left: 22px; line-height: 1.8; color: #dcfce7; }
+    #status { margin-top: 12px; color: #c7d2fe; font-size: .9rem; }
+    .empty { padding: 20px; text-align: center; color: #94a3b8; border: 1px dashed var(--border); border-radius: 12px; }
+    footer { text-align: center; color: #94a3b8; padding: 25px; }
+
+    .toolbar { display:flex; flex-wrap:wrap; gap:10px; margin:14px 0; }
+    .toolbar .btn { width:auto; flex:1; min-width:130px; margin-top:0; }
+    .stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:12px; margin:16px 0; }
+    .stat { background:#ffffff0b; border:1px solid var(--border); border-radius:14px; padding:16px; }
+    .stat strong { display:block; font-size:1.5rem; color:#86efac; margin-top:5px; }
+    .session-btn { padding:7px 10px; border:1px solid var(--border); border-radius:9px; color:white; background:#334155; cursor:pointer; }
+    .session-btn.done { background:#166534; }
+    .timer-face { text-align:center; font-size:clamp(2.5rem,8vw,4rem); font-weight:800; letter-spacing:2px; margin:14px 0; }
+    .tip-actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:16px; }
+    .tip-actions .btn { width:auto; flex:1; min-width:160px; margin-top:0; }
+    .progress-track { height:10px; border-radius:99px; background:#334155; overflow:hidden; margin-top:8px; }
+    .progress-fill { height:100%; width:0; background:linear-gradient(90deg,#22c55e,#86efac); transition:width .25s; }
+    @media print { header, #welcomeScreen, .setup-card, .toolbar, .no-print, footer { display:none !important; } body { background:white; color:black; } .card { background:white; color:black; border:0; } td { color:black; background:#f8fafc; } }
+    [hidden] { display: none !important; }
+    @media (max-width: 600px) { .container { padding: 14px; } .card { padding: 18px; } .header-wrap { padding: 14px; } }
+  </style>
+</head>
+<body>
+  <div id="welcomeScreen">
+    <div class="welcome-box">
+      <h1>Welcome to SmartStudy AI 📘</h1>
+      <p>Your personalized study planner</p>
+      <form id="welcomeForm">
+        <input id="studentNameInput" placeholder="Enter your name" maxlength="60" required>
+        <button type="submit">Start Planning</button>
+      </form>
+    </div>
+  </div>
+
+  <header>
+    <div class="header-wrap">
+      <h1>SmartStudy <span>AI</span></h1>
+      <div id="studentName"></div>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="card setup-card">
+      <h2>Student Setup</h2>
+      <p class="subtext">Customize your study routine and subject priorities.</p>
+      <div class="grid">
+        <div><label for="board">Board</label><select id="board"><option>CBSE</option><option>ICSE</option><option>State Board</option></select></div>
+        <div><label for="grade">Class</label><input id="grade" value="9"></div>
+        <div><label for="subjects">Subjects (comma-separated)</label><input id="subjects" value="Maths, Science, SST, English"></div>
+        <div><label for="weak">Weak Subjects</label><input id="weak" value="Maths" placeholder="Maths, Science"></div>
+        <div><label for="strong">Strong Subjects</label><input id="strong" value="SST" placeholder="English"></div>
+        <div><label for="hours">Study Hours</label><input type="number" id="hours" value="4" min="0.5" max="12" step="0.5"></div>
+        <div><label for="start">Start Time</label><input type="time" id="start" value="16:00"></div>
+        <div><label for="energy">Energy Level</label><select id="energy"><option value="low">Low</option><option value="normal" selected>Normal</option><option value="high">High</option></select></div>
+      </div>
+      <div class="date-grid">
+        <div><label for="startDate">PDF Start Date</label><input type="date" id="startDate"></div>
+        <div><label for="endDate">PDF End Date</label><input type="date" id="endDate"></div>
+      </div>
+      <button class="btn" id="generateBtn">Generate Timetable</button>
+      <div id="status" role="status" aria-live="polite"></div>
+    </section>
+
+    <section class="card">
+      <h2>Today's Study Plan</h2>
+      <p class="subtext">Your timetable with prioritized subjects and breaks.</p>
+      <div id="emptyState" class="empty">Generate your timetable to see it here.</div>
+      <div class="toolbar no-print">
+        <button class="btn" id="dailyBtn" type="button">📅 Daily View</button>
+        <button class="btn tertiary" id="weeklyBtn" type="button">🗓️ Weekly View</button>
+        <button class="btn tertiary" id="printBtn" type="button">🖨️ Print / Save PDF</button>
+      </div>
+      <div class="stats" id="progressStats">
+        <div class="stat">Sessions completed<strong id="completedCount">0 / 0</strong></div>
+        <div class="stat">Completion rate<strong id="completionRate">0%</strong></div>
+        <div class="stat">Study minutes completed<strong id="completedMinutes">0</strong></div>
+      </div>
+      <div class="progress-track" aria-label="Study progress"><div class="progress-fill" id="progressFill"></div></div>
+      <p class="subtext" id="viewLabel" style="margin-top:12px">Daily plan</p>
+      <div class="table-wrap">
+        <table id="planTable" hidden>
+          <thead><tr><th>Date</th><th>Time</th><th>Subject / Activity</th><th>Done?</th></tr></thead>
+          <tbody id="output"></tbody>
+        </table>
+      </div>
+      <button class="btn secondary" id="downloadBtn">Download Professional PDF</button>
+      <button class="btn tertiary" id="reloadBtn">Reset Planner</button>
+    </section>
+
+    <section class="card" id="timerBox">
+      <h2>Focus Timer ⏱️</h2>
+      <p class="subtext">Choose a focus session and work without distractions.</p>
+      <div class="toolbar no-print">
+        <button class="btn tertiary timer-preset" data-minutes="25" type="button">25 minutes</button>
+        <button class="btn tertiary timer-preset" data-minutes="15" type="button">15 minutes</button>
+        <button class="btn tertiary timer-preset" data-minutes="5" type="button">5-minute break</button>
+      </div>
+      <div class="timer-face" id="timerDisplay" aria-live="polite">25:00</div>
+      <div class="toolbar no-print">
+        <button class="btn secondary" id="timerStart">▶ Start</button>
+        <button class="btn tertiary" id="timerPause">⏸ Pause</button>
+        <button class="btn tertiary" id="timerReset">↺ Reset</button>
+      </div>
+      <p id="timerStatus" class="subtext" role="status">Ready when you are.</p>
+    </section>
+
+    <section class="card" id="adviceBox" hidden>
+      <h2>Study Advice 💡</h2>
+      <p class="subtext">Suggestions based on your selected priorities.</p>
+      <ul id="adviceList"></ul>
+      <div class="tip-actions no-print">
+        <button class="btn secondary" id="anotherTipBtn" type="button">💡 Give Me Another Tip</button>
+      </div>
+    </section>
+  </main>
+
+  <footer>© SmartStudy AI • Made by Abhay Sharma</footer>
+
+  <script>
+    "use strict";
+
+    let adviceMessages = [];
+    let generatedTimetable = [];
+    let currentView = "daily";
+    let tipIndex = 0;
+    let timerSeconds = 25 * 60;
+    let timerRemaining = timerSeconds;
+    let timerInterval = null;
+    let planDates = [];
+    let completedSessions = new Set(JSON.parse(localStorage.getItem("smartstudy_completedSessions") || "[]"));
+    const $ = id => document.getElementById(id);
+    const nameBox = $("studentName");
+
+    function isoDate(date) {
+      return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`;
+    }
+
+    function init() {
+      const today = new Date();
+      $("startDate").value = isoDate(today);
+      const end = new Date(today);
+      end.setDate(end.getDate() + 6);
+      $("endDate").value = isoDate(end);
+
+      const savedSettings = localStorage.getItem("smartstudy_settings");
+      if (savedSettings) {
+        try {
+          const settings = JSON.parse(savedSettings);
+          Object.entries(settings).forEach(([id, value]) => { if ($(id)) $(id).value = value; });
+        } catch (error) { console.warn("Could not restore saved settings.", error); }
+      }
+      const saved = localStorage.getItem("smartstudy_studentName");
+      if (saved) {
+        $("welcomeScreen").style.display = "none";
+        nameBox.textContent = "👋 " + saved;
+        $("studentNameInput").value = saved;
+      }
+    }
+
+    function saveSettings() {
+      const ids = ["board","grade","subjects","weak","strong","hours","start","energy","startDate","endDate"];
+      const settings = {};
+      ids.forEach(id => settings[id] = $(id).value);
+      localStorage.setItem("smartstudy_settings", JSON.stringify(settings));
+    }
+
+    function saveName(value) {
+      const name = value.trim();
+      if (!name) { alert("Please enter your name."); return false; }
+      localStorage.setItem("smartstudy_studentName", name);
+      nameBox.textContent = "👋 " + name;
+      $("welcomeScreen").style.display = "none";
+      return true;
+    }
+
+    $("welcomeForm").addEventListener("submit", event => {
+      event.preventDefault();
+      saveName($("studentNameInput").value);
+    });
+
+    function splitList(value) {
+      return value.split(",").map(s => s.trim()).filter(Boolean);
+    }
+    function norm(value) { return value.trim().toLowerCase(); }
+
+    function formatTime(total) {
+      const minutes = ((total % 1440) + 1440) % 1440;
+      const hour24 = Math.floor(minutes / 60);
+      const hour12 = hour24 % 12 || 12;
+      return `${hour12}:${String(minutes % 60).padStart(2,"0")} ${hour24 >= 12 ? "PM" : "AM"}`;
+    }
+
+    function getAdvice(weak, subjects) {
+      if (weak.length >= 2) return [
+        "Start with a weaker subject while your concentration is fresh.",
+        "Review key concepts before attempting practice questions.",
+        "Use worked examples, then solve questions independently.",
+        "Write down doubts to revisit after each session.",
+        "Take breaks and maintain a healthy sleep routine."
+      ];
+      if (weak.length === 1) return [
+        `Give ${weak[0]} a focused session and revisit it later in the week.`,
+        "Use active recall: close your book and explain the topic yourself.",
+        "Finish each session with practice questions."
+      ];
+      const core = subjects.filter(s => /math|science/i.test(s));
+      const tips = [];
+      if (core.length) tips.push(`Keep regular practice time for ${core.join(" and ")} along with your other subjects.`);
+      tips.push("Use short quizzes to identify topics needing more attention.");
+      tips.push("Mix revision with practice instead of only rereading notes.");
+      return tips;
+    }
+
+    function generate() {
+      const subjects = splitList($("subjects").value);
+      const weakSet = new Set(splitList($("weak").value).map(norm));
+      const strongSet = new Set(splitList($("strong").value).map(norm));
+      const hours = Number($("hours").value);
+      const start = $("start").value;
+      const energy = $("energy").value;
+
+      if (!subjects.length) return alert("Enter at least one subject.");
+      if (subjects.length > 20) return alert("Please enter no more than 20 subjects.");
+      if (new Set(subjects.map(norm)).size !== subjects.length) return alert("Please remove duplicate subjects.");
+      if (!Number.isFinite(hours) || hours < 0.5 || hours > 12) return alert("Study hours must be between 0.5 and 12.");
+      if (!start) return alert("Please choose a start time.");
+      saveSettings();
+
+      const weak = subjects.filter(s => weakSet.has(norm(s)));
+      const maxSession = energy === "high" ? 45 : energy === "low" ? 25 : 35;
+      const totalMinutes = Math.round(hours * 60);
+      const pool = subjects.map(subject => {
+        let weight = weakSet.has(norm(subject)) ? 3 : strongSet.has(norm(subject)) ? 1 : 2;
+        if (!weak.length && /math|science/i.test(subject)) weight += 1.5;
+        return { subject, weight, minutes: 0 };
+      });
+
+      const weightSum = pool.reduce((sum, item) => sum + item.weight, 0);
+      let allocated = 0;
+      pool.forEach((item, i) => {
+        item.minutes = i === pool.length - 1
+          ? totalMinutes - allocated
+          : Math.floor(totalMinutes * item.weight / weightSum);
+        allocated += item.minutes;
+      });
+      pool.sort((a,b) => b.weight - a.weight);
+
+      const [hh, mm] = start.split(":").map(Number);
+      let current = hh * 60 + mm;
+      generatedTimetable = [];
+
+      pool.forEach(item => {
+        let remaining = item.minutes;
+        while (remaining > 0) {
+          const duration = Math.min(maxSession, remaining);
+          generatedTimetable.push({
+            time: `${formatTime(current)} – ${formatTime(current + duration)}`,
+            subject: item.subject,
+            duration,
+            type: weakSet.has(norm(item.subject)) ? "weak" : "normal"
+          });
+          current += duration;
+          remaining -= duration;
+          if (remaining > 0) {
+            generatedTimetable.push({
+              time: `${formatTime(current)} – ${formatTime(current + 5)}`,
+              subject: "Break",
+              type: "break"
+            });
+            current += 5;
+          }
+        }
+      });
+
+      planDates = [];
+      const base = new Date();
+      for (let day = 0; day < 7; day++) {
+        const date = new Date(base);
+        date.setDate(base.getDate() + day);
+        planDates.push(isoDate(date));
+      }
+      adviceMessages = getAdvice(weak, subjects);
+      tipIndex = 0;
+      renderAdvice();
+      $("adviceBox").hidden = false;
+      currentView = "daily";
+      renderTimetable();
+      saveSettings();
+      $("status").textContent = `Timetable generated: ${subjects.length} subjects, ${hours} study hours. Your settings are saved in this browser.`;
+      updateProgress();
+    }
+
+    function renderTimetable() {
+      const output = $("output");
+      output.replaceChildren();
+      const entries = [];
+      const dates = currentView === "weekly" ? planDates : [isoDate(new Date())];
+      dates.forEach(date => {
+        generatedTimetable.forEach((row, index) => {
+          const id = `${date}_${index}`;
+          entries.push({ ...row, date, id, done: completedSessions.has(id) });
+        });
+      });
+      entries.forEach(row => {
+        const tr = document.createElement("tr");
+        tr.className = `${row.type}${row.done ? " completed-row" : ""}`;
+        const dateCell = document.createElement("td");
+        const timeCell = document.createElement("td");
+        const subjectCell = document.createElement("td");
+        const doneCell = document.createElement("td");
+        const dateObj = new Date(row.date + "T12:00:00");
+        dateCell.textContent = currentView === "weekly"
+          ? dateObj.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })
+          : dateObj.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+        timeCell.textContent = row.time;
+        subjectCell.textContent = row.subject;
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = `session-btn${row.done ? " done" : ""}`;
+        button.textContent = row.done ? "✓ Done" : "Mark done";
+        button.setAttribute("aria-pressed", String(row.done));
+        button.addEventListener("click", () => {
+          if (completedSessions.has(row.id)) completedSessions.delete(row.id);
+          else completedSessions.add(row.id);
+          localStorage.setItem("smartstudy_completedSessions", JSON.stringify([...completedSessions]));
+          renderTimetable();
+          updateProgress();
+        });
+        doneCell.appendChild(button);
+        if (row.type === "break") button.disabled = true;
+        tr.append(dateCell, timeCell, subjectCell, doneCell);
+        output.appendChild(tr);
+      });
+      $("emptyState").hidden = generatedTimetable.length > 0;
+      $("planTable").hidden = generatedTimetable.length === 0;
+      $("viewLabel").textContent = currentView === "weekly"
+        ? "Weekly view • the generated routine is shown for the next 7 days."
+        : "Daily view • mark each study session as completed.";
+      $("dailyBtn").className = currentView === "daily" ? "btn" : "btn tertiary";
+      $("weeklyBtn").className = currentView === "weekly" ? "btn" : "btn tertiary";
+    }
+
+    function updateProgress() {
+      const dates = currentView === "weekly" && planDates.length ? planDates : [isoDate(new Date())];
+      const eligible = [];
+      dates.forEach(date => generatedTimetable.forEach((row, index) => {
+        if (row.type !== "break") eligible.push({ id: `${date}_${index}`, duration: row.duration || 0 });
+      }));
+      const done = eligible.filter(item => completedSessions.has(item.id));
+      const rate = eligible.length ? Math.round(done.length / eligible.length * 100) : 0;
+      $("completedCount").textContent = `${done.length} / ${eligible.length}`;
+      $("completionRate").textContent = `${rate}%`;
+      $("completedMinutes").textContent = done.reduce((sum, item) => sum + item.duration, 0);
+      $("progressFill").style.width = `${rate}%`;
+    }
+
+    function renderAdvice() {
+      const list = $("adviceList");
+      list.replaceChildren();
+      if (!adviceMessages.length) return;
+      const message = adviceMessages[tipIndex % adviceMessages.length];
+      const li = document.createElement("li");
+      li.textContent = message;
+      list.appendChild(li);
+    }
+
+
+    function setTimer(minutes) {
+      clearInterval(timerInterval);
+      timerInterval = null;
+      timerSeconds = minutes * 60;
+      timerRemaining = timerSeconds;
+      updateTimerDisplay();
+      $("timerStatus").textContent = `${minutes} minute${minutes === 1 ? "" : "s"} selected.`;
+    }
+
+    function updateTimerDisplay() {
+      const mins = Math.floor(timerRemaining / 60);
+      const secs = timerRemaining % 60;
+      $("timerDisplay").textContent = `${String(mins).padStart(2,"0")}:${String(secs).padStart(2,"0")}`;
+      document.title = `${$("timerDisplay").textContent} • SmartStudy AI`;
+    }
+
+    function startTimer() {
+      if (timerInterval) return;
+      if (timerRemaining <= 0) timerRemaining = timerSeconds;
+      $("timerStatus").textContent = "Focus time is running. Keep distractions away!";
+      timerInterval = setInterval(() => {
+        timerRemaining--;
+        updateTimerDisplay();
+        if (timerRemaining <= 0) {
+          clearInterval(timerInterval);
+          timerInterval = null;
+          $("timerStatus").textContent = "Session complete! Take a short break. 🎉";
+          alert("Focus session complete! Great work.");
+        }
+      }, 1000);
+    }
+
+    function getDateRange() {
+      const startValue = $("startDate").value;
+      const endValue = $("endDate").value;
+      if (!startValue || !endValue) { alert("Select both PDF dates."); return null; }
+      const start = new Date(startValue + "T12:00:00");
+      const end = new Date(endValue + "T12:00:00");
+      if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) { alert("Please select valid dates."); return null; }
+      if (start > end) { alert("Start date must be on or before the end date."); return null; }
+      const days = Math.round((end - start) / 86400000) + 1;
+      if (days > 366) { alert("Choose a date range of 366 days or fewer."); return null; }
+      return { start, days };
+    }
+
+    function downloadPDF() {
+      if (!generatedTimetable.length) { alert("Generate your timetable first."); return; }
+      if (!window.jspdf?.jsPDF) { alert("The PDF library did not load. Check your internet connection and reload."); return; }
+      const range = getDateRange();
+      if (!range) return;
+
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+      const W = doc.internal.pageSize.getWidth();
+      const H = doc.internal.pageSize.getHeight();
+      const margin = 15;
+      const contentW = W - margin * 2;
+      const primary = [79,70,229], accent = [22,163,74], dark = [31,41,55], muted = [100,116,139];
+      const name = localStorage.getItem("smartstudy_studentName") || "Student";
+      const board = $("board").value;
+      const grade = $("grade").value.trim() || "—";
+      const hours = Number($("hours").value);
+
+      function dateLabel(date) {
+        return date.toLocaleDateString("en-GB", {weekday:"long",day:"numeric",month:"long",year:"numeric"});
+      }
+      function header(date) {
+        doc.setFillColor(...primary);
+        doc.roundedRect(margin, 12, contentW, 25, 4, 4, "F");
+        doc.setTextColor(255,255,255);
+        doc.setFont("helvetica","bold"); doc.setFontSize(20);
+        doc.text("SmartStudy AI", W/2, 22, {align:"center"});
+        doc.setFont("helvetica","normal"); doc.setFontSize(9);
+        doc.text("YOUR PERSONALIZED STUDY PLAN", W/2, 30, {align:"center"});
+
+        doc.setTextColor(...dark); doc.setFont("helvetica","bold"); doc.setFontSize(12);
+        doc.text(dateLabel(date), margin, 46);
+
+        doc.setFillColor(245,247,255);
+        doc.roundedRect(margin, 51, contentW, 26, 3, 3, "F");
+        doc.setFontSize(8); doc.setTextColor(...muted);
+        doc.text("STUDENT", margin+5, 59);
+        doc.text("CLASS / BOARD", margin+65, 59);
+        doc.text("DAILY STUDY", margin+130, 59);
+        doc.setFont("helvetica","bold"); doc.setFontSize(10); doc.setTextColor(...dark);
+        doc.text(doc.splitTextToSize(name,55)[0], margin+5, 68);
+        doc.text(doc.splitTextToSize(`${grade} / ${board}`,58)[0], margin+65, 68);
+        doc.text(`${hours} hours`, margin+130, 68);
+        return 84;
+      }
+      function sectionTitle(title,y) {
+        doc.setFont("helvetica","bold"); doc.setFontSize(12); doc.setTextColor(...primary);
+        doc.text(title,margin,y);
+        doc.setDrawColor(199,210,254); doc.line(margin,y+3,W-margin,y+3);
+        return y+10;
+      }
+      function nextPage(date) {
+        doc.addPage();
+        return sectionTitle("CONTINUED STUDY PLAN", header(date));
+      }
+      function ensure(y, needed, date) {
+        return y+needed > H-20 ? nextPage(date) : y;
+      }
+      function addAdvice(y,date) {
+        if (!adviceMessages.length) return y;
+        const wrapped = adviceMessages.map(t => doc.splitTextToSize("• "+t,contentW-14));
+        const boxH = 12 + wrapped.reduce((sum,lines)=>sum+lines.length*4.6,0) + 3;
+        y = ensure(y,boxH,date);
+        doc.setFillColor(240,253,244); doc.setDrawColor(187,247,208);
+        doc.roundedRect(margin,y,contentW,boxH,3,3,"FD");
+        doc.setFont("helvetica","bold"); doc.setFontSize(10); doc.setTextColor(...accent);
+        doc.text("STUDY TIPS",margin+6,y+7);
+        let ty = y+13;
+        doc.setFont("helvetica","normal"); doc.setFontSize(8.5); doc.setTextColor(...dark);
+        wrapped.forEach(lines => { doc.text(lines,margin+6,ty); ty += lines.length*4.6; });
+        return y+boxH+8;
+      }
+      function addRows(y,date) {
+        doc.setFillColor(238,242,255); doc.roundedRect(margin,y-5,contentW,9,2,2,"F");
+        doc.setFont("helvetica","bold"); doc.setFontSize(8.5); doc.setTextColor(...primary);
+        doc.text("TIME",margin+5,y+1);
+        doc.text("SUBJECT / ACTIVITY",margin+58,y+1);
+        y += 10;
+
+        generatedTimetable.forEach(row => {
+          const isBreak = row.type === "break";
+          const subjectLines = doc.splitTextToSize(row.subject,contentW-68);
+          const rowH = Math.max(9,subjectLines.length*4.2+4);
+          y = ensure(y,rowH+2,date);
+          if (isBreak) doc.setFillColor(240,253,244);
+          else if (row.type === "weak") doc.setFillColor(254,242,242);
+          else doc.setFillColor(248,250,252);
+          doc.roundedRect(margin,y-4,contentW,rowH,2,2,"F");
+          doc.setFont("helvetica",isBreak?"italic":"normal"); doc.setFontSize(8.5);
+          doc.setTextColor(...(isBreak?accent:dark));
+          doc.text(row.time,margin+5,y+1);
+          doc.setFont("helvetica",row.type==="weak"?"bold":"normal");
+          doc.text(subjectLines,margin+58,y+1);
+          y += rowH+2;
+        });
+        return y;
+      }
+
+      for (let i=0;i<range.days;i++) {
+        const date = new Date(range.start);
+        date.setDate(date.getDate()+i);
+        if (i>0) doc.addPage();
+        let y = header(date);
+        y = sectionTitle("TODAY'S STUDY TIMETABLE",y);
+        y = addAdvice(y,date);
+        y = addRows(y,date);
+        const reminder = doc.splitTextToSize("Remember: take breaks, stay hydrated, and protect your sleep.",contentW);
+        if (y+reminder.length*4.2 < H-20) {
+          doc.setFont("helvetica","italic"); doc.setFontSize(8); doc.setTextColor(...muted);
+          doc.text(reminder,margin,y+3);
+        }
+      }
+
+      const totalPages = doc.getNumberOfPages();
+      for (let p=1;p<=totalPages;p++) {
+        doc.setPage(p);
+        doc.setDrawColor(226,232,240); doc.line(margin,H-14,W-margin,H-14);
+        doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.setTextColor(...muted);
+        doc.text("SmartStudy AI • Personalized Study Planner",margin,H-8);
+        doc.text(`${p} / ${totalPages}`,W-margin,H-8,{align:"right"});
+      }
+      doc.save("SmartStudyAI_StudyPlan.pdf");
+    }
+
+    $("generateBtn").addEventListener("click",generate);
+    $("downloadBtn").addEventListener("click",downloadPDF);
+    $("dailyBtn").addEventListener("click", () => { currentView = "daily"; renderTimetable(); updateProgress(); });
+    $("weeklyBtn").addEventListener("click", () => { currentView = "weekly"; renderTimetable(); updateProgress(); });
+    $("printBtn").addEventListener("click", () => window.print());
+    $("anotherTipBtn").addEventListener("click", () => { if (adviceMessages.length) { tipIndex = (tipIndex + 1) % adviceMessages.length; renderAdvice(); } });
+    document.querySelectorAll(".timer-preset").forEach(button => button.addEventListener("click", () => setTimer(Number(button.dataset.minutes))));
+    $("timerStart").addEventListener("click", startTimer);
+    $("timerPause").addEventListener("click", () => { clearInterval(timerInterval); timerInterval = null; $("timerStatus").textContent = "Timer paused."; });
+    $("timerReset").addEventListener("click", () => { clearInterval(timerInterval); timerInterval = null; timerRemaining = timerSeconds; updateTimerDisplay(); $("timerStatus").textContent = "Timer reset."; });
+    $("reloadBtn").addEventListener("click",() => {
+      if (!confirm("Reset the planner? Your saved name will be kept.")) return;
+      generatedTimetable = [];
+      adviceMessages = [];
+      planDates = [];
+      currentView = "daily";
+      $("output").replaceChildren();
+      $("planTable").hidden = true;
+      $("emptyState").hidden = false;
+      $("adviceBox").hidden = true;
+      $("status").textContent = "";
+      $("subjects").value = "Maths, Science, SST, English";
+      $("weak").value = "Maths";
+      $("strong").value = "SST";
+      $("hours").value = "4";
+      $("start").value = "16:00";
+      $("energy").value = "normal";
+      $("grade").value = "9";
+      $("board").value = "CBSE";
+      saveSettings();
+      updateProgress();
+    });
+
+    ["board","grade","subjects","weak","strong","hours","start","energy","startDate","endDate"].forEach(id => {
+      $(id).addEventListener("change", saveSettings);
+    });
+    init();
+    updateTimerDisplay();
+    updateProgress();
+  </script>
+</body>
+</html>
